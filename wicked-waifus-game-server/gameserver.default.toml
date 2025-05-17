@@ -1,0 +1,38 @@
+service_id = 2
+
+[database]
+host = "localhost:5432"
+user_name = "postgres"
+password = "wuwabeta"
+db_name = "wuwa2.4"
+
+[service_end_point]
+addr = "tcp://127.0.0.1:10004"
+
+[gateway_end_point]
+addr = "tcp://127.0.0.1:10003"
+
+[game_server_config]
+resources_path = "data/assets/game-data"
+load_textmaps = true
+# Do not change yet, issues to be solved
+quadrant_size = 1000000
+
+[asset_config]
+asset_url = "https://git.xeondev.com/wickedwaifus/wicked-waifus-data/releases/download/pioneer_2.4.1/bundle.zip"
+buffer_size = 268435456
+
+[default_unlocks]
+unlock_all_roles = true
+unlock_all_roles_max_level = true
+unlock_all_roles_all_sequences = false
+unlock_all_mc_elements = true
+unlock_all_weapons = true
+unlock_all_adventures = false
+unlock_all_functions = true
+unlock_all_guides = false
+unlock_all_tutorials = false
+unlock_all_teleporter = true
+
+[modelz_custom]
+carthetyia_dmg = 5000000
