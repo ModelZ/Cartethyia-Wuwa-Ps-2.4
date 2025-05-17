@@ -19,6 +19,7 @@ use wicked_waifus_protocol::message::Message;
 pub use skill::*;
 pub use teleport::*;
 pub use tutorial::*;
+pub use mzcustomdamage::*;
 
 mod advice;
 mod animal;
@@ -40,6 +41,7 @@ mod scene;
 mod skill;
 mod teleport;
 mod tutorial;
+mod mzcustomdamage;
 
 macro_rules! handle_request {
     ($($name:ident $(, $inner_package:ident)?;)*) => {

@@ -16,10 +16,8 @@ use crate::logic::ecs::component::ComponentContainer;
 use crate::logic::player::{Element, Player};
 use crate::logic::utils::world_util;
 use crate::query_components;
-use rand::Rng;
 
-// ModelZ libraries
-use crate::config;
+use crate::logic::handler::mzcustomdamage;
 
 #[inline(always)]
 fn create_combat_response(
@@ -118,91 +116,64 @@ fn handle_damage_execute_request(
         .receive_pack_notify
         .get_or_insert_with(Default::default);
 
-    let mut world_ref = player.world.borrow_mut();
-    let world = world_ref.get_mut_world_entity();
-    let config_id = world.get_config_id(request.attacker_entity_id.try_into().unwrap());
-    let mut damage = 1; // TODO: Fix the formula with real parameters(10 field equation)
-    if config_id.to_string().len() == 4 {
-        if let Some(damage_data) = damage_data::iter().find(|d| d.id == request.damage_id) {
-            let attribute = query_components!(world, request.attacker_entity_id, Attribute)
-                .0
-                .unwrap();
-            if let Ok(related_attribute) = EAttributeType::try_from(damage_data.related_property) {
-                if let Some((value, _)) = attribute.attr_map.get(&related_attribute) {
-                    if let Some(&rate_lv) = damage_data
-                        .rate_lv
-                        .iter()
-                        .find(|&lvl| *lvl == request.skill_level)
-                    {
-                        let hardness_lv = damage_data.hardness_lv[0];
-                        tracing::info!(
-                            "atk: {}, damage_id: {}, role_id: {}, rate_lv: {}, hardness_lv: {}",
-                            value,
-                            request.damage_id,
-                            config_id,
-                            rate_lv,
-                            hardness_lv
-                        );
-                        damage = if hardness_lv == 0 || rate_lv <= 0 {
-                            1
-                        } else {
-                            ((rate_lv as f32 / hardness_lv as f32) * 100.0 + (*value as f32)) as i32
-                        };
+    let mut damage = 1; // TODO: Fix the formula with real parameters(10 field equation) 
+    // scope of the mutable borrow of player
+    { 
+        let mut world_ref = player.world.borrow_mut();
+        let world = world_ref.get_mut_world_entity();
+        let config_id = world.get_config_id(request.attacker_entity_id.try_into().unwrap());
+        if config_id.to_string().len() == 4 {
+            if let Some(damage_data) = damage_data::iter().find(|d| d.id == request.damage_id) {
+                let attribute = query_components!(world, request.attacker_entity_id, Attribute)
+                    .0
+                    .unwrap();
+                if let Ok(related_attribute) = EAttributeType::try_from(damage_data.related_property) {
+                    if let Some((value, _)) = attribute.attr_map.get(&related_attribute) {
+                        if let Some(&rate_lv) = damage_data
+                            .rate_lv
+                            .iter()
+                            .find(|&lvl| *lvl == request.skill_level)
+                        {
+                            let hardness_lv = damage_data.hardness_lv[0];
+                            tracing::info!(
+                                "atk: {}, damage_id: {}, role_id: {}, rate_lv: {}, hardness_lv: {}",
+                                value,
+                                request.damage_id,
+                                config_id,
+                                rate_lv,
+                                hardness_lv
+                            );
+                            damage = if hardness_lv == 0 || rate_lv <= 0 {
+                                1
+                            } else {
+                                ((rate_lv as f32 / hardness_lv as f32) * 100.0 + (*value as f32)) as i32
+                            };
+                        }
                     }
-                }
-            };
-        }
+                };
+            }
+        }        
     }
-    
+
     // Add base random damage
-    damage += rand::rng().random_range(2000..10000); // Random base damage between 2000 and 10000
-    // Calculate critical hit with a 50% probability
-    let crit_chance = rand::rng().random_bool(0.5); // 50% chance for a critical hit
-    if crit_chance {
-        damage = (damage as f32 * 3.5) as i32; // Apply critical hit multiplier 3.5x
-    }
+    let (randdamage, crit) = mzcustomdamage::random_damage(); // Random base damage between 2000 and 10000
+    damage = randdamage;
     // get element power type
     let element = damage_data::iter()
                 .find(|d| d.id == request.damage_id)
                 .map(|d| d.element_power_type)
                 .unwrap_or(0);
-
-    // If Cartetyia do damage
-    pub struct CartetyiaStats {
-        pub atk: i32,
-        pub hp: i32,
-        pub weapon_atk: i32,
-    }
-    // Cartetyia stats
-    let cartetyia_stats = CartetyiaStats {
-        atk: 312,
-        hp: 14800,
-        weapon_atk: 412,
-    };
-
-    // Get the current formation
-    let current_formation = player.formation_list
-    .values()
-    .find(|f| f.is_current)
-    .unwrap();
-    // Get the current role id
-    let current_role_id = current_formation.cur_role;
-
-    // define modelz custom variable from json
-    let mz_custom_var = &config::get_config().modelz_custom;
-
-    // if attacker is carthetyia, apply custom damage
-    if current_role_id == 1409 {
-        damage = mz_custom_var.carthetyia_dmg;
-    }
     
+    // check if attacker is carthetyia
+    mzcustomdamage::Cartetyia::if_cartethyia_dmg(player, &mut damage);
+      
     // log the damage execution details
     tracing::info!(
         "Executing damage: {}, Attacker: {}, Target: {}, Crit?: {}, Element: {}",
         damage,
-        current_role_id,
+        mzcustomdamage::get_cerrent_role_id(player),
         request.target_entity_id,
-        crit_chance,
+        crit,
         element,
     );
     // Push combat response
@@ -215,10 +186,15 @@ fn handle_damage_execute_request(
             part_index: request.part_index,
             damage: damage,
             e_k: element,
-            is_crit: crit_chance,
+            is_crit: crit,
             ..Default::default()
         }),
     ));
+    // Define borrow scope for world_ref
+    // to avoid mutable borrow conflicts
+    let mut world_ref = player.world.borrow_mut();
+    let world = world_ref.get_mut_world_entity();
+
     if let Some((value, _)) = query_components!(world, request.target_entity_id, Attribute)
         .0
         .unwrap()
