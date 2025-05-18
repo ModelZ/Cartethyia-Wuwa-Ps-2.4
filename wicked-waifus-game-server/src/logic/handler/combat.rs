@@ -164,17 +164,18 @@ fn handle_damage_execute_request(
                 .map(|d| d.element_power_type)
                 .unwrap_or(0);
     
-    // check if attacker is carthetyia
-    mzcustomdamage::Cartetyia::if_cartethyia_dmg(player, &mut damage);
+    // check if attacker is cartetyia
+    mzcustomdamage::Cartetyia::if_cartethyia_dmg(player, &mut damage, request.damage_id);
       
     // log the damage execution details
     tracing::info!(
-        "Executing damage: {}, Attacker: {}, Target: {}, Crit?: {}, Element: {}",
+        "Executing damage: {}, Attacker: {}, Target: {}, Crit?: {}, Element: {}, damage_id: {}",
         damage,
         mzcustomdamage::get_cerrent_role_id(player),
         request.target_entity_id,
         crit,
         element,
+        request.damage_id,
     );
     // Push combat response
     receive_pack.data.push(create_combat_response(

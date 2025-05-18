@@ -9,7 +9,7 @@ pub struct RoleFormation {
 
 // Will be updated every version
 // const DEFAULT_FORMATION: &[i32] = &[5101, 1407, 1507];
-const DEFAULT_FORMATION: &[i32] = &[1205, 1107, 1409];
+const DEFAULT_FORMATION: &[i32] = &[1207, 1407, 1409];
 
 impl RoleFormation {
     pub fn default_roles() -> &'static [i32] {

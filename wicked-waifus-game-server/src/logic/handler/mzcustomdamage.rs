@@ -65,7 +65,7 @@ impl Cartetyia {
         
     }
 
-    pub fn if_cartethyia_dmg(player: &mut Player, damage: &mut i32) {
+    pub fn if_cartethyia_dmg(player: &mut Player, damage: &mut i32, damage_id: i64) {
         // Get the current role id
         let current_role_id = get_cerrent_role_id(player);
 
@@ -74,7 +74,10 @@ impl Cartetyia {
 
         // if attacker is carthetyia, apply custom damage
         if current_role_id == 1409 {
-            *damage = mz_custom_var.carthetyia_dmg;
+            //*damage = mz_custom_var.carthetyia_dmg;
+
+            // Set the damage value based on the damage_id for debugging
+            *damage = damage_id as i32;
         }
     }
 
@@ -103,3 +106,4 @@ pub fn get_cerrent_role_id(player: &Player) -> i32 {
     let current_role_id = current_formation.cur_role;
     return current_role_id;
 }
+
